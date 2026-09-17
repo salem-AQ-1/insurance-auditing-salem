@@ -56,9 +56,9 @@ For the submitted predictions, confidence is deliberately conservative. Findings
 With additional time, I would:
 
 1. Move the normalised contract rules and invoice data into a relational database and implement more deterministic audit checks in SQL, using indexing and window functions for scalable duplicate, cumulative-volume, and cross-invoice validation.
-2. Evaluate stronger semantic matching approaches, including embedding-based retrieval and relevant NVIDIA AI tooling, to improve service-name resolution beyond abbreviation rules and fuzzy string similarity.
+2. Evaluate vector-based semantic search, such as Oracle AI Vector Search, to store service embeddings and improve invoice-to-contract service matching beyond abbreviation rules and fuzzy string similarity.
 3. Add targeted automated tests for every pricing-rule family and combinations of rules.
-4. Improve confidence calibration and then extend the reusable audit pipeline to Hospitals 3–5..
+4. Improve confidence calibration and then extend the reusable audit pipeline to Hospitals 3–5.
 
 ## AI Tool Usage
 
