@@ -2,66 +2,74 @@
 
 ## 1. Approach and Measurement
 
-I used Hospital 1 as the development and calibration set because it is the only hospital with ground-truth labels. I first built a rule-based auditing pipeline that parses contract rules, maps invoice descriptions to contract services, calculates expected charges, and performs additional invoice and cross-invoice validation.
+I used Hospital 1 as the development and validation set because it is the only hospital with ground-truth labels. I built a rule-based auditing pipeline that reads contract rules, matches invoice descriptions to contract services, calculates expected charges, and performs additional invoice-level and cross-invoice checks.
 
-I measured Hospital 1 at invoice level. An invoice was considered detected as erroneous when the audit produced one or more error findings.
+I evaluated Hospital 1 at invoice level by comparing the audit result for each invoice with the provided labels.
 
-The final Hospital 1 result was:
+The final Hospital 1 results were:
 
 - 892 correct classifications out of 913 invoices
-- 97.7% accuracy
+- 97.7% overall accuracy
 - 40 of 58 labelled erroneous invoices detected
 - 3 false-positive invoices
 
-Hospital 1 was used only for development and calibration and is not included in the scored submission.
+Hospital 1 was used only to develop and evaluate the approach and is not included in the scored submission.
 
-I then applied the approach to Hospital 2. I chose Hospital 2 rather than attempting shallow coverage of Hospitals 2–5 because its prose-based contract provided a substantially different extraction and matching problem.
+Given the limited time, I then focused on Hospital 2 rather than attempting shallow coverage of Hospitals 2–5. Hospital 2 also provided a different challenge because its contract is more prose-based and its invoice service descriptions frequently differ from the contract wording.
 
 ## 2. Hospital 1 Performance and Error Analysis
 
-Several deterministic categories were particularly reliable on the development set. Detected duplicate invoice IDs, invalid contracts, invalid service dates, invoice-total mismatches, line-total arithmetic errors, daily-cap violations, and overcharges were associated with labelled erroneous invoices in the observed Hospital 1 results.
+The pipeline performed well on several rule-based checks, including duplicate invoice IDs, invalid contracts and dates, invoice-total mismatches, arithmetic errors, daily-cap checks, and pricing differences.
 
-The remaining errors were mainly explained by four systematic failure modes:
+After comparing the missed invoices with the Hospital 1 labels, I identified four main areas where the approach could be improved:
 
 ### Service-description matching
 
-Invoice descriptions frequently use abbreviations, shortened words, or a different word order from the contract. Conservative matching reduces false positives but can leave genuine unknown-service errors undetected.
+Invoice descriptions frequently contain abbreviations, shortened words, or a different word order from the contract. This makes it difficult to reliably identify the corresponding contract service. When a match was uncertain, I preferred to leave it for review rather than force a high-confidence match.
 
 ### Unit-basis interpretation
 
-A textual difference between the billed unit basis and contract wording does not always imply an erroneous invoice. Aggressive basis validation produced false positives during development, so uncertain mappings were retained for review.
+The billed unit basis and the wording used in the contract do not always match exactly. Treating every textual difference as an error created false positives during development, so uncertain cases were handled more cautiously.
 
 ### Interacting pricing rules
 
-Premiums, weekend uplifts, cumulative volume discounts, bundles, caps, and exclusion rules can interact. Correctly identifying an individual rule is easier than reliably reproducing every combination and ordering of rules.
+Some prices depend on more than one contract rule, such as premiums, weekend uplifts, volume discounts, bundles, caps, or exclusions. These combinations are more difficult to validate than a simple comparison with a base rate.
 
-### Dates and cross-invoice context
+### Dates and cross-invoice checks
 
-Malformed service dates and duplicate activity across separate invoices cannot always be detected through a simple line-level price comparison. I therefore added explicit date, duplicate-invoice, cross-invoice duplicate-service, arithmetic, and invoice-total checks.
+Some errors require looking beyond a single invoice line. I therefore added checks for invalid dates, duplicate invoice IDs, duplicate services across invoices, arithmetic consistency, and invoice-total consistency.
 
 ## 3. Hospital 2 and Uncertainty
 
-Hospital 2 has no labels, so I do not report an accuracy figure for it.
+Hospital 2 has no provided labels, so I do not claim an accuracy figure for it.
 
-Its contract parser extracted 76 service rates, 9 threshold rules, 8 weekend uplift rules, 8 volume-discount rules, 8 daily-cap rules, 3 bundle rules, and 6 exclusion rules.
+From the Hospital 2 contract, the pipeline extracted:
 
-The largest practical issue was service-description variation. Billing descriptions included heavily abbreviated forms such as `ADV GI PROC` and `RTN NEURO IMG INTERP`. I added general abbreviation normalisation and fuzzy service matching rather than hard-coding specific invoice IDs.
+- 76 service rates
+- 9 threshold rules
+- 8 weekend uplift rules
+- 8 volume discount rules
+- 8 daily cap rules
+- 3 bundle rules
+- 6 exclusion rules
 
-This reduced unmatched/review service lines from 12,582 initially to 619 out of 14,360 lines.
+The largest challenge was matching invoice service descriptions with the contract. Billing descriptions included heavily abbreviated forms such as `ADV GI PROC` and `RTN NEURO IMG INTERP`.
 
-For the submitted predictions, confidence is deliberately conservative. Findings supported by deterministic rules that performed strongly on Hospital 1 receive higher confidence. Ambiguous service and unit-basis mappings receive lower confidence rather than being presented as certain conclusions.
+I added abbreviation normalisation and fuzzy matching to improve this process without hard-coding individual invoice IDs. After these improvements, the number of service lines requiring review decreased from 12,582 to 619 out of 14,360 lines.
+
+For the final submission, I used higher confidence for findings supported by clearer rule-based checks and lower confidence where service or unit-basis matching remained uncertain.
 
 ## 4. What I Would Do With Another Week
 
 With additional time, I would:
 
-1. Move the normalised contract rules and invoice data into a relational database and implement more deterministic audit checks in SQL, using indexing and window functions for scalable duplicate, cumulative-volume, and cross-invoice validation.
-2. Evaluate vector-based semantic search, such as Oracle AI Vector Search, to store service embeddings and improve invoice-to-contract service matching beyond abbreviation rules and fuzzy string similarity.
-3. Add targeted automated tests for every pricing-rule family and combinations of rules.
-4. Improve confidence calibration and then extend the reusable audit pipeline to Hospitals 3–5.
+1. Move the normalised contract rules and invoice data into a relational database and implement more of the structured audit checks in SQL. Indexing and window functions could support efficient duplicate detection, cumulative-volume calculations, and cross-invoice validation at larger scale.
+2. Evaluate vector-based semantic search, such as Oracle AI Vector Search, to store service embeddings and improve matching between abbreviated invoice descriptions and contract services.
+3. Add automated tests for each pricing-rule type and for cases where multiple pricing rules interact.
+4. Further validate the confidence scores and then extend the reusable audit pipeline to Hospitals 3–5.
 
 ## AI Tool Usage
 
-I used ChatGPT and Cursor for implementation assistance, Python/Pandas debugging, refactoring, reasoning about contract parsing, and iteration on service-description normalisation.
+I used ChatGPT and Cursor as development assistants for Python/Pandas debugging, code iteration, contract-parsing reasoning, and improving service-description matching.
 
-I validated changes by rerunning the pipeline and measuring the resulting behaviour against the labelled Hospital 1 development set. AI-generated suggestions were treated as development assistance rather than ground truth; contract rules and measured outputs remained the basis for audit decisions.
+I validated changes by rerunning the pipeline and comparing the results with the provided Hospital 1 labels. AI-generated suggestions were treated as development assistance rather than ground truth; the contract rules and measured Hospital 1 results were used to evaluate the approach.
