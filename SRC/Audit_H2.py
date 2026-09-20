@@ -180,6 +180,7 @@ def normalize_basis(text):
         "per visit": "per_visit",
         "per procedure": "per_procedure",
         "per hour": "per_hour",
+        "per hour per item": "per_hour_per_item",
         "per day": "per_day",
         "per day of service": "per_day",
         "per item": "per_item",
@@ -284,6 +285,7 @@ for raw_line in contract_text.splitlines():
         (r"per item supplied", "per item supplied"),
         (r"per procedure", "per procedure"),
         (r"per visit", "per visit"),
+        (r"per hour\s*,?\s*per item", "per hour per item"),
         (r"per hour", "per hour"),
         (r"per test", "per test"),
         (r"per item", "per item supplied"),
@@ -1007,13 +1009,13 @@ def calculate_expected_rate(row):
         )
 
     if row["volume_discount"] > 0:
-
         rate = round_half_up(
-            rate * (
-                1 - row["volume_discount"]
+            Decimal(str(rate))
+            * (
+                Decimal("1")
+                - Decimal(str(row["volume_discount"]))
             )
         )
-
     return rate
 
 
@@ -1107,6 +1109,8 @@ def final_status(row):
         return "REVIEW_SERVICE"
 
     if row["basis_match"] is not True:
+        if row["match_score"] >= 0.95:
+            return "INVALID_UNIT_BASIS"
         return "REVIEW_BASIS"
 
     if row["duplicate_service"]:

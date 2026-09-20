@@ -7,6 +7,7 @@ df = pd.read_csv(INPUT)
 
 # Calibrated conservatively using Hospital 1 development results.
 HIGH_CONFIDENCE_ERRORS = {
+    "INVALID_UNIT_BASIS",
     "DAILY_CAP_VIOLATION",
     "DUPLICATE_INVOICE_ID",
     "DUPLICATE_SERVICE",
