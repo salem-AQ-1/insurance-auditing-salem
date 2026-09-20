@@ -66,7 +66,7 @@ For the final submission, I used higher confidence for findings supported by cle
 With additional time, I would:
 
 1. Move the normalised contract rules and invoice data into a relational database and implement more of the structured audit checks in SQL. Indexing and window functions could support efficient duplicate detection, cumulative-volume calculations, and cross-invoice validation at larger scale.
-2. Evaluate vector-based semantic search, such as Oracle AI Vector Search, to store service embeddings and improve matching between abbreviated invoice descriptions and contract services.
+2. Evaluate vector-based semantic search, such as Oracle AI Vector Search, to store service embeddings and improve matching between abbreviated invoice descriptions and contract services. If time allowed, I would also explore NVIDIA embedding models and AI tools as another approach to semantic service matching and compare their results with the current matching method.
 3. Add automated tests for each pricing-rule type, including rounding boundaries and cases where multiple pricing rules interact.
 4. Further validate the confidence scores and then extend the reusable audit pipeline to Hospitals 3–5.
 
