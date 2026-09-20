@@ -58,6 +58,8 @@ Prompt:
 
 Further iterations addressed Hospital 2 volume discounts, exclusions, and heavily abbreviated service descriptions.
 
+A later validation pass identified a rounding edge case in discounted unit prices. I used AI assistance to inspect the discrepancy and trace it to floating-point arithmetic. The calculation was updated to use Decimal-based `ROUND_HALF_UP` rounding, and the Hospital 2 audit and submission were regenerated and revalidated after the change.
+
 ## 7. Submission and Confidence
 
 Prompt:
