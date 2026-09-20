@@ -57,6 +57,8 @@ The largest challenge was matching invoice service descriptions with the contrac
 
 I added abbreviation normalisation and fuzzy matching to improve this process without hard-coding individual invoice IDs. After these improvements, the number of service lines requiring review decreased from 12,582 to 619 out of 14,360 lines.
 
+During final validation, I also identified a rounding edge case in cumulative volume-discount calculations. Floating-point arithmetic could produce a one-penny difference in discounted unit prices and incorrectly classify otherwise correct lines as overcharges. I changed these calculations to Decimal-based `ROUND_HALF_UP` rounding and regenerated the audit results before producing the final submission.
+
 For the final submission, I used higher confidence for findings supported by clearer rule-based checks and lower confidence where service or unit-basis matching remained uncertain.
 
 ## 4. What I Would Do With Another Week
@@ -65,11 +67,11 @@ With additional time, I would:
 
 1. Move the normalised contract rules and invoice data into a relational database and implement more of the structured audit checks in SQL. Indexing and window functions could support efficient duplicate detection, cumulative-volume calculations, and cross-invoice validation at larger scale.
 2. Evaluate vector-based semantic search, such as Oracle AI Vector Search, to store service embeddings and improve matching between abbreviated invoice descriptions and contract services.
-3. Add automated tests for each pricing-rule type and for cases where multiple pricing rules interact.
+3. Add automated tests for each pricing-rule type, including rounding boundaries and cases where multiple pricing rules interact.
 4. Further validate the confidence scores and then extend the reusable audit pipeline to Hospitals 3–5.
 
 ## AI Tool Usage
 
 I used ChatGPT and Cursor as development assistants for Python/Pandas debugging, code iteration, contract-parsing reasoning, and improving service-description matching.
 
-I validated changes by rerunning the pipeline and comparing the results with the provided Hospital 1 labels. AI-generated suggestions were treated as development assistance rather than ground truth; the contract rules and measured Hospital 1 results were used to evaluate the approach.
+I validated changes by rerunning the pipeline, inspecting extracted contract rules and intermediate audit outputs, and comparing the development approach with the provided Hospital 1 labels. AI-generated suggestions were treated as development assistance rather than ground truth; contractual rules and measured development results were used to evaluate audit decisions.
