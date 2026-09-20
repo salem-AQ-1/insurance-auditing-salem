@@ -19,23 +19,21 @@ The audit pipeline:
 3. Normalises and matches abbreviated invoice descriptions to contract services.
 4. Calculates expected line charges.
 5. Applies relevant pricing rules including:
-  - threshold premiums
-  - weekend uplifts
-  - cumulative volume discounts
-  - bundles
-  - daily caps
-  - exclusion windows
+   - threshold premiums
+   - weekend uplifts
+   - cumulative volume discounts
+   - bundles
+   - daily caps
+   - exclusion windows
 6. Performs additional validation including:
-  - duplicate invoice IDs
-  - cross-invoice duplicate services
-  - contract validation
-  - service-date validation
-  - unit-basis validation
-  - line-total arithmetic
-  - invoice-total reconciliation
+   - duplicate invoice IDs
+   - cross-invoice duplicate services
+   - contract validation
+   - service-date validation
+   - unit-basis validation
+   - line-total arithmetic
+   - invoice-total reconciliation
 7. Retains uncertain service/basis matches for review instead of forcing a high-confidence classification.
-
-
 
 ## Development-set Results
 
@@ -68,54 +66,48 @@ Service descriptions in the invoices were frequently abbreviated and reordered. 
 
 Unmatched/review service lines decreased from 12,582 initially to 619 out of 14,360 lines after improving the matching layer.
 
+During final validation, a rounding edge case was identified in cumulative volume-discount calculations. Discounted unit prices are therefore calculated using Decimal-based `ROUND_HALF_UP` rounding to avoid floating-point penny differences being incorrectly classified as pricing errors.
+
 Because Hospital 2 has no ground-truth labels, I do not claim an accuracy estimate for it.
 
 ## Submission
 
 `submission.csv` contains predictions for Hospital 2.
 
-Confidence values are deliberately conservative. Deterministic findings validated strongly on Hospital 1 receive higher confidence, while ambiguous service or basis mappings receive lower confidence.
+Confidence values are deliberately conservative. Deterministic findings supported by clearer rule-based checks receive higher confidence, while ambiguous service or basis mappings receive lower confidence.
 
 ## Running
 
 Install dependencies:
 
 ```bash
-
 pip install -r requirements.txt
-
 ```
 
 Run the Hospital 1 development audit:
 
 ```bash
-
-python SRC/[audit.py](http://audit.py)
-
+python SRC/audit.py
 ```
 
 Run Hospital 2:
 
 ```bash
-
-python SRC/Audit_[H2.py](http://H2.py)
-
+python SRC/Audit_H2.py
 ```
 
 Build the submission:
 
 ```bash
-
-python SRC/Build_[Submission.py](http://Submission.py)
-
+python SRC/Build_Submission.py
 ```
-
-
 
 ## AI-assisted Development
 
 ChatGPT and Cursor were used for implementation assistance, debugging Python/Pandas issues, contract-parsing reasoning, refactoring, and iteration on service-description normalisation.
 
-Changes were validated by rerunning the pipeline and measuring performance against the labelled Hospital 1 development set. AI-generated suggestions were not treated as ground truth; contractual rules and measured outputs were used to validate audit decisions.
+AI assistance was also used during final validation to investigate a rounding discrepancy in Hospital 2's cumulative volume-discount calculations. Changes were validated by rerunning the pipeline, inspecting intermediate audit outputs, and using the labelled Hospital 1 development set for development-stage measurement.
+
+AI-generated suggestions were not treated as ground truth; contractual rules and measured outputs were used to validate audit decisions.
 
 See `prompts.md` for additional details.
