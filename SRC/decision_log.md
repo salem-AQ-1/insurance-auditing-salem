@@ -1,63 +1,75 @@
 # Decision Log
 
-This document records the main assumptions, ambiguities, and implementation decisions made during the insurance-auditing exercise.
+This is a short record of the main decisions I made while working on the exercise, especially where the contract or data was not completely straightforward.
 
-## 1. Scope and Sequencing
+## 1. Scope
 
-**Ambiguity / constraint:** The exercise covers four unlabelled hospitals in addition to the labelled development set, while the stated time budget is limited to 6–8 hours.
+Because the exercise had a 6–8 hour time limit, I decided not to try to cover every hospital.
 
-**Decision:** I used Hospital 1 as the labelled development and calibration set, then focused the scored submission on Hospital 2. Hospital 2 was selected because its prose-based contract provided a different contract-parsing and service-matching challenge from Hospital 1.
+I used Hospital 1 to develop and test the approach because it was the only hospital with labels. After that, I focused on Hospital 2 for the submission. Its contract was quite different from Hospital 1 and was mostly written in prose, so I thought it was a good test of whether the approach could work on a different contract structure.
 
-I intentionally did not attempt Hospitals 3–5 rather than producing lower-confidence predictions without sufficient validation.
+I left Hospitals 3–5 out rather than submit results that I had not had enough time to validate properly.
 
-## 2. Invoice Description Matching
+## 2. Matching invoice descriptions to contract services
 
-**Ambiguity:** Hospital invoice descriptions do not consistently match the contractual service names. They frequently contain abbreviations, reordered words, and shortened terminology.
+One of the biggest issues was that the descriptions in the invoices often did not match the service names in the contract.
 
-**Decision:** I normalised common abbreviations and used fuzzy matching to identify likely contractual services. I avoided hard-coding individual invoice IDs or manually mapping known errors.
+For example, descriptions could be abbreviated, shortened, or have the words in a different order.
 
-Where the match remained uncertain, I retained the case for review or assigned lower confidence rather than forcing a high-confidence classification.
+I handled this by normalising common abbreviations and then using fuzzy matching. I did not want to hard-code specific invoice IDs just to improve the results.
 
-## 3. Unit-Basis Interpretation
+If I was not confident enough about a match, I preferred to keep it as a review case or give it lower confidence instead of forcing a match.
 
-**Ambiguity:** The wording of the billed unit basis does not always exactly match the terminology used in the contract.
+## 3. Unit basis
 
-**Decision:** I did not automatically classify every textual unit-basis difference as an error. During development on Hospital 1, this produced false positives. Clear incompatibilities were flagged, while ambiguous mappings were handled conservatively.
+I initially found that comparing the unit basis as exact text could create false positives because the invoice and contract sometimes described the same basis differently.
 
-## 4. Contract Rule Extraction
+Because of this, I normalised the common forms and only treated clear mismatches as errors. Cases that were still ambiguous were handled more conservatively.
 
-**Ambiguity:** Hospital 2 expresses pricing rules in prose rather than in a single structured rate table. Individual services may also be affected by additional rules such as thresholds, weekend uplifts, cumulative volume discounts, daily caps, bundles, and exclusions.
+## 4. Hospital 2 contract rules
 
-**Decision:** I extracted these rules into structured representations and applied them separately from service-description matching. This made it possible to inspect the extracted rules and avoid treating raw contract text or AI interpretation as a prediction.
+Hospital 2 was more difficult to parse because many of its pricing rules were written inside contract clauses rather than in a simple rate table.
 
-For Hospital 2, the parser extracted 76 service rates, 9 threshold rules, 8 weekend uplift rules, 8 volume discount rules, 8 daily cap rules, 3 bundle rules, and 6 exclusion rules.
+I extracted the rules into structured Python logic. This included the base service rates as well as threshold rules, weekend uplifts, volume discounts, daily caps, bundles, and exclusions.
 
-## 5. Cumulative Volume Discounts and Rounding
+The final parser identified:
 
-**Ambiguity:** Cumulative volume discounts require both ordering utilisation over time and calculating discounted monetary values without introducing floating-point rounding differences.
+- 76 service rates
+- 9 threshold rules
+- 8 weekend uplift rules
+- 8 volume discount rules
+- 8 daily cap rules
+- 3 bundle rules
+- 6 exclusion rules
 
-**Decision:** Utilisation was processed in service-date order and accumulated by service. During final validation, I identified cases where floating-point arithmetic produced a one-penny difference in discounted unit prices.
+I kept the contract-rule extraction separate from the service matching so I could inspect both parts independently when something looked wrong.
 
-I changed the discounted-price calculation to Decimal-based `ROUND_HALF_UP` rounding and regenerated the Hospital 2 audit and final submission. This prevented penny-level floating-point differences from being treated as pricing errors.
+## 5. Volume discounts and rounding
 
-## 6. Cross-Invoice and Structural Checks
+While reviewing the Hospital 2 results, I noticed that many apparent overcharges were only different by one penny per unit.
 
-**Ambiguity:** Not every invoice error can be identified by comparing a single line's price with a contract rate.
+I traced this back to rounding in the volume-discount calculation. Using normal floating-point arithmetic could produce a slightly different result from the monetary rounding expected by the contract.
 
-**Decision:** I included additional checks for duplicate invoice IDs, potential duplicate services across invoices, contract validity, service and invoice dates, line-total arithmetic, invoice-total reconciliation, daily caps, and exclusion rules.
+I changed this calculation to use `Decimal` with `ROUND_HALF_UP`, then reran the Hospital 2 audit and rebuilt the final submission.
 
-These checks were kept separate from service matching so that deterministic structural findings did not depend unnecessarily on fuzzy description matching.
+This was an important check because I did not want small rounding differences to create a large number of false overcharge flags.
 
-## 7. Confidence and Uncertainty
+## 6. Other invoice checks
 
-**Ambiguity:** Hospital 2 has no ground-truth labels, so its true accuracy cannot be measured directly.
+I also decided not to rely only on price comparisons because some problems can only be found by looking at the invoice structure or across multiple invoices.
 
-**Decision:** I do not report an accuracy estimate for Hospital 2. Confidence values are deliberately conservative: clearer deterministic findings receive higher confidence, while cases affected by uncertain service or unit-basis interpretation receive lower confidence.
+I added checks for duplicate invoice IDs, possible duplicate services, invalid contracts and dates, line arithmetic, invoice-total mismatches, daily caps, and exclusion rules.
 
-Hospital 1 labels were used for development and calibration only and were not included in the scored submission.
+## 7. Confidence
 
-## 8. AI Assistance
+Hospital 2 does not have labels, so I cannot measure its real accuracy and I did not want to claim one.
 
-ChatGPT and Cursor were used as development assistants for contract-parsing reasoning, Python/Pandas implementation, debugging, service-description matching, and investigation of the final rounding discrepancy.
+I used higher confidence where the result came from a clearer rule-based check, and lower confidence where service matching or unit-basis interpretation was less certain.
 
-AI-generated suggestions were not treated as authoritative contract interpretations or ground truth. Changes were validated through program execution, inspection of extracted rules and intermediate outputs, and comparison with the labelled Hospital 1 development set where labels were available.
+Hospital 1 was used to develop and measure the approach, but its invoices were not included in the final submission.
+
+## 8. AI assistance
+
+I used ChatGPT and Cursor throughout the exercise to help with Python/Pandas debugging, thinking through contract-parsing logic, improving the service-matching approach, and investigating issues I found while reviewing the results.
+
+I did not treat AI output as the correct answer by default. I reran the code, checked intermediate results against the contract rules, and used the Hospital 1 labels to measure the approach where ground truth was available.
